@@ -1,17 +1,19 @@
 FROM dperson/torproxy:latest
 
-# Install privoxy to translate HTTP -> SOCKS5 (Tor)
 RUN apk add --no-cache privoxy
 
-# Configure Privoxy to forward all traffic to Tor's SOCKS5 proxy
-RUN echo "forward-socks5t / 127.0.0.1:9050 ." > /etc/privoxy/config \
-    && echo "listen-address 0.0.0.0:443" >> /etc/privoxy/config \
-    && echo "enable-remote-toggle 0" >> /etc/privoxy/config \
-    && echo "enable-remote-http-toggle 0" >> /etc/privoxy/config \
-    && echo "accept-intercepted-requests 1" >> /etc/privoxy/config
+# Override torrc (optional)
+# You may disable TransPort etc
+# For simplicity, let default torrc, but add HTTP tunnel port line
+RUN echo "HTTPTunnelPort 0.0.0.0:443" >> /etc/tor/torrc
 
-# Expose HTTPS port
+# Configure privoxy (if still needed)
+RUN echo "forward-socks5t / 127.0.0.1:9050 ." > /etc/privoxy/config \
+    && echo "listen-address 127.0.0.1:8118" >> /etc/privoxy/config
+
 EXPOSE 443
 
-# Start Tor and Privoxy together
-CMD torproxy.sh & privoxy --no-daemon /etc/privoxy/config
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
+CMD ["/start.sh"]
